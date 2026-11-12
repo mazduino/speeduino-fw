@@ -5,6 +5,58 @@
 
 #pragma GCC optimize("Os")
 
+#if defined(MEGA100_LAYOUT)
+// Mega100: an STM32F407 on the Arduino Mega footprint (STM32F407 Mega converter v1.3).
+// Board mappings and TunerStudio pin lists use Arduino Mega pin numbers; this table turns
+// Mega D0..D53 into the STM32 pin on that header position. D21 and D46 are not wired, and
+// D27 is PB2 (BOOT1), which the black_F407VX variant of the STM32 core does not expose.
+// A0..A15 need no table: the converter wires them to PA0-PA7, PB0, PB1, PC0-PC5, which
+// is the order of the STM32 core's A0..A15.
+static constexpr uint8_t MEGA100_DIGITAL_PINS[54] = {
+  PA10, PA9,  PD7,  PB6,  PB12, PB13, PB14, PB15, // D0-D7
+  PD8,  PD9,  PD10, PD11, PA8,  PB3,  PD5,  PD6,  // D8-D15
+  PB10, PB11, PD4,  PD3,  PB4,  NOT_A_PIN, PC9, PC8, // D16-D23
+  PA15, PB5,  PC7,  NOT_A_PIN, PC6, PE1, PD14, PD15, // D24-D31
+  PD12, PD13, PE5,  PE15, PE4,  PE14, PE3,  PE13, // D32-D39
+  PE2,  PE12, PE10, PB7,  PE0,  PE11, NOT_A_PIN, PE9, // D40-D47
+  PE6,  PE8,  PE7,  PB8,  PC13, PB9,              // D48-D53
+};
+static constexpr uint8_t MEGA_MAX_DIGITAL_PINS = 54U; // As BOARD_MAX_DIGITAL_PINS on the Mega 2560
+
+uint8_t mega100Pin(uint8_t megaPin)
+{
+  if (megaPin < MEGA_MAX_DIGITAL_PINS) { return MEGA100_DIGITAL_PINS[megaPin]; }
+  return megaPin; // Ax references and NOT_A_PIN are already STM32 pin numbers
+}
+
+uint8_t pinTranslate(uint8_t rawPin)
+{
+  // Same numbering as the Mega: 0-53 digital, then A8 onwards.
+  if(rawPin > MEGA_MAX_DIGITAL_PINS) { return A8 + (rawPin - MEGA_MAX_DIGITAL_PINS - 1); }
+  return mega100Pin(rawPin);
+}
+
+static void translateMega100Pins(pinNumbers_t &pins)
+{
+  for (auto &pin : pins.injectorPins) { pin = mega100Pin(pin); }
+  for (auto &pin : pins.coilPins) { pin = mega100Pin(pin); }
+  uint8_t *const fields[] = {
+    &pins.pinTrigger, &pins.pinTrigger2, &pins.pinTrigger3, &pins.pinTPS, &pins.pinMAP, &pins.pinEMAP,
+    &pins.pinIAT, &pins.pinCLT, &pins.pinO2, &pins.pinO2_2, &pins.pinBat, &pins.pinTachOut,
+    &pins.pinFuelPump, &pins.pinIdle1, &pins.pinIdle2, &pins.pinIdleUp, &pins.pinIdleUpOutput,
+    &pins.pinCTPS, &pins.pinFuel2Input, &pins.pinSpark2Input, &pins.pinBoost, &pins.pinVVT_1,
+    &pins.pinVVT_2, &pins.pinFan, &pins.pinStepperDir, &pins.pinStepperStep, &pins.pinStepperEnable,
+    &pins.pinLaunch, &pins.pinIgnBypass, &pins.pinFlex, &pins.pinVSS, &pins.pinBaro,
+    &pins.pinResetControl, &pins.pinFuelPressure, &pins.pinOilPressure, &pins.pinWMIEmpty,
+    &pins.pinWMIIndicator, &pins.pinWMIEnabled, &pins.pinAirConComp, &pins.pinAirConFan,
+    &pins.pinAirConRequest,
+#ifdef SD_LOGGING
+    &pins.pinSDEnable,
+#endif
+  };
+  for (uint8_t *pin : fields) { *pin = mega100Pin(*pin); }
+}
+#else
 uint8_t pinTranslate(uint8_t rawPin)
 {
   uint8_t outputPin = rawPin;
@@ -12,6 +64,7 @@ uint8_t pinTranslate(uint8_t rawPin)
 
   return outputPin;
 }
+#endif
 
 uint8_t pinTranslateAnalog(uint8_t rawPin)
 {
@@ -60,7 +113,7 @@ static pinNumbers_t getV02ShieldMapping(void)
 
 TESTABLE_STATIC pinNumbers_t getDefaultPinMapping(void)
 {
-#if defined(STM32F407xx)
+#if defined(STM32F407xx) && !defined(MEGA100_LAYOUT)
   pinNumbers_t pins;
   //Pin definitions for experimental board Tjeerd 
   //Black F407VE wiki.stm32duino.com/index.php?title=STM32F407
@@ -324,6 +377,8 @@ static pinNumbers_t getV04ShieldMapping(void)
   pins.pinWMIEmpty = 34;
   pins.pinWMIIndicator = 35;
   pins.pinWMIEnabled = 36;
+#elif defined(MEGA100_LAYOUT)
+  // Mega100 keeps the Mega pins above; getPinMapping() translates them.
 #elif defined(STM32F407xx)
 //Pin definitions for experimental board Tjeerd 
   //Black F407VE wiki.stm32duino.com/index.php?title=STM32F407
@@ -672,7 +727,7 @@ static pinNumbers_t getTurtanasPcbPinMapping(void)
 }
 
 // Pin mappings for the Levin board
-#if defined(STM32F407xx)
+#if defined(STM32F407xx) && !defined(MEGA100_LAYOUT)
 #define LEVIN_BOARD_MAPPING
 #endif
 
@@ -720,7 +775,7 @@ static pinNumbers_t getLevinMapping(void)
 }
 #endif
 
-#if defined(CORE_AVR) || defined(UNIT_TEST)
+#if defined(CORE_AVR) || defined(MEGA100_LAYOUT) || defined(UNIT_TEST)
 #define PLAZOMAT_V01_MAPPING
 #endif
 
@@ -801,7 +856,7 @@ static pinNumbers_t getBmwPnPMapping(void)
 {
   pinNumbers_t pins;
 
-#if defined(CORE_AVR) || defined(UNIT_TEST)
+#if defined(CORE_AVR) || defined(MEGA100_LAYOUT) || defined(UNIT_TEST)
   //This is the regular MEGA2560 pin mapping
   pins.setInjectorPin(0, 8);//Output pin injector 1
   pins.setInjectorPin(1, 9);//Output pin injector 2
@@ -1029,7 +1084,7 @@ static pinNumbers_t getBlitzboxBL49spMapping(void)
   return pins;
 }
 
-#if defined(CORE_AVR) || defined(UNIT_TEST)
+#if defined(CORE_AVR) || defined(MEGA100_LAYOUT) || defined(UNIT_TEST)
 #define DIY_EFI_CORE4_MAPPING
 #endif
 
@@ -1312,7 +1367,7 @@ static pinNumbers_t getBearCubMapping(void)
 }
 #endif
 
-#if defined(STM32F407xx) || defined(STM32F411xE) || defined(STM32F401xC) || defined(CORE_STM32)
+#if (defined(STM32F407xx) || defined(STM32F411xE) || defined(STM32F401xC) || defined(CORE_STM32)) && !defined(MEGA100_LAYOUT)
 #define SPECTRE_V05_MAPPING
 #endif
 
@@ -1527,7 +1582,7 @@ static pinNumbers_t getFCRMicroF45Mapping(void)
 }
 #endif
 
-pinNumbers_t getPinMapping(uint8_t boardID)
+static pinNumbers_t getBoardPinMapping(uint8_t boardID)
 {
 #ifndef SMALL_FLASH_MODE
   switch (boardID)
@@ -1580,4 +1635,15 @@ pinNumbers_t getPinMapping(uint8_t boardID)
 #endif
 
   return getDefaultPinMapping();
+}
+
+pinNumbers_t getPinMapping(uint8_t boardID)
+{
+#if defined(MEGA100_LAYOUT)
+  pinNumbers_t pins = getBoardPinMapping(boardID);
+  translateMega100Pins(pins);
+  return pins;
+#else
+  return getBoardPinMapping(boardID);
+#endif
 }

@@ -104,7 +104,7 @@ extern "C" char* sbrk(int incr); //Used to freeRam
 inline uint32_t  digitalPinToInterrupt(uint32_t Interrupt_pin) { return Interrupt_pin; } //This isn't included in the stm32duino libs (yet)
 #endif
 
-#if defined(USER_BTN) 
+#if defined(USER_BTN) && !defined(MEGA100_LAYOUT) //Mega100: no button, and the variant's button pin is a header pin
   #define EEPROM_RESET_PIN USER_BTN //onboard key0 for black STM32F407 boards and blackpills, keep pressed during boot to reset eeprom
 #endif
 
@@ -152,7 +152,15 @@ extern STM32RTC& rtc;
     #define A15  PA5
   #endif
 #else
-  #ifdef USE_SPI_EEPROM
+  #if defined(MEGA100_LAYOUT)
+    //Mega100: only USB is off limits. PB0, PB3, PB4 and PB5 are Mega header pins (A8, D13, D20, D25)
+    //here, not the SPI flash of the black board; the EEPROM is in internal flash.
+    static inline bool pinIsReserved(uint8_t pin) {
+      return (pin == (uint8_t)PA11)
+          || (pin == (uint8_t)PA12)
+        ;
+    }
+  #elif defined(USE_SPI_EEPROM)
     #if defined(BOARD_FCR_MICRO_F4) //FCR Micro F4: USB(PA11/PA12) + VBUS sense(PA9) + SPI3 flash(PC10/11/12) + CS + CAN1 ALT_2(PD0/PD1)
     static inline bool pinIsReserved(uint8_t pin) {
       PinName p = digitalPinToPinName(pin);

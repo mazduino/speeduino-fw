@@ -193,13 +193,18 @@ void initialiseAll(void)
     //As above but for knock pulses
     if(configPage10.knock_mode == KNOCK_MODE_DIGITAL)
     {
-      if(configPage10.knock_pullup) { pinMode(configPage10.knock_pin, INPUT_PULLUP); }
-      else { pinMode(configPage10.knock_pin, INPUT); }
+#if defined(MEGA100_LAYOUT)
+      const uint8_t knockPin = pinTranslate(configPage10.knock_pin);
+#else
+      const uint8_t knockPin = configPage10.knock_pin;
+#endif
+      if(configPage10.knock_pullup) { pinMode(knockPin, INPUT_PULLUP); }
+      else { pinMode(knockPin, INPUT); }
 
-      if(!pinIsReserved(configPage10.knock_pin)) 
+      if(!pinIsReserved(knockPin)) 
       { 
-        if(configPage10.knock_trigger == KNOCK_TRIGGER_HIGH) { attachInterrupt(digitalPinToInterrupt(configPage10.knock_pin), knockPulse, RISING); }
-        else { attachInterrupt(digitalPinToInterrupt(configPage10.knock_pin), knockPulse, FALLING); }
+        if(configPage10.knock_trigger == KNOCK_TRIGGER_HIGH) { attachInterrupt(digitalPinToInterrupt(knockPin), knockPulse, RISING); }
+        else { attachInterrupt(digitalPinToInterrupt(knockPin), knockPulse, FALLING); }
       }
     }
 

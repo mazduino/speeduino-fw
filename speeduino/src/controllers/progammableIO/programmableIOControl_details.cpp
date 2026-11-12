@@ -1,6 +1,9 @@
 #include "programmableIOControl_details.h"
 #include "../../../bit_manip.h"
 #include "../../../globals.h"
+#if defined(MEGA100_LAYOUT)
+#include "../../pins/pinMapping.h"
+#endif
 
 namespace programmableIOControl_details {
 
@@ -24,7 +27,14 @@ void __attribute__((optimize("Os"))) channel_state_t::initialize(config13& page1
   // letting the rule silently never run. Clearing the pin changes the page CRC, so
   // TunerStudio detects the conflict and surfaces it to the user. Virtual/cascade
   // pins (>=128) and already-disabled slots (0) are left untouched.
+#if defined(MEGA100_LAYOUT)
+  // The tune holds Arduino Mega pin numbers; drive the STM32 pin on that header position.
+  const uint8_t tunePin = page13.outputPin[index];
+  _pin = validatePin((tunePin != 0U && tunePin < 128U) ? pinTranslate(tunePin) : tunePin);
+  if (_pin == NOT_A_PIN) { page13.outputPin[index] = NOT_A_PIN; }
+#else
   page13.outputPin[index] = _pin = validatePin(page13.outputPin[index]);
+#endif
 
   isOutputInverted = BIT_CHECK(page13.outputInverted, index);
   isOutputActive = isPinValid() && isOutputInverted;

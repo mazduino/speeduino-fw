@@ -18,6 +18,15 @@
 */
 uint8_t pinTranslate(uint8_t rawPin);
 
+#if defined(MEGA100_LAYOUT)
+/**
+ * @brief Mega100 only: the STM32 pin on Arduino Mega header pin \p megaPin (0-53).
+ *
+ * Returns NOT_A_PIN for header pins the converter does not wire, and any other value unchanged.
+ */
+uint8_t mega100Pin(uint8_t megaPin);
+#endif
+
 /**
  * @brief Translate a pin number (0 - 22) to the relevant Ax (analog) pin reference.
  * 
