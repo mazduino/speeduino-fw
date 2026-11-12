@@ -259,13 +259,18 @@ void initialiseAll(void)
     //As above but for knock pulses
     if(configPage10.knock_mode == KNOCK_MODE_DIGITAL)
     {
-      if(configPage10.knock_pullup) { pinMode(configPage10.knock_pin, INPUT_PULLUP); }
-      else { pinMode(configPage10.knock_pin, INPUT); }
+#if defined(MEGA100_LAYOUT)
+      const byte knockPin = pinTranslate(configPage10.knock_pin);
+#else
+      const byte knockPin = configPage10.knock_pin;
+#endif
+      if(configPage10.knock_pullup) { pinMode(knockPin, INPUT_PULLUP); }
+      else { pinMode(knockPin, INPUT); }
 
-      if(!pinIsReserved(configPage10.knock_pin)) 
+      if(!pinIsReserved(knockPin)) 
       { 
-        if(configPage10.knock_trigger == KNOCK_TRIGGER_HIGH) { attachInterrupt(digitalPinToInterrupt(configPage10.knock_pin), knockPulse, RISING); }
-        else { attachInterrupt(digitalPinToInterrupt(configPage10.knock_pin), knockPulse, FALLING); }
+        if(configPage10.knock_trigger == KNOCK_TRIGGER_HIGH) { attachInterrupt(digitalPinToInterrupt(knockPin), knockPulse, RISING); }
+        else { attachInterrupt(digitalPinToInterrupt(knockPin), knockPulse, FALLING); }
       }
     }
 
@@ -1451,6 +1456,8 @@ void setPinMapping(byte boardID)
         pinWMIEmpty = 34;
         pinWMIIndicator = 35;
         pinWMIEnabled = 36;
+      #elif defined(MEGA100_LAYOUT)
+        // Mega100 keeps the Mega pins above; they are translated after this switch.
       #elif defined(STM32F407xx)
      //Pin definitions for experimental board Tjeerd 
         //Black F407VE wiki.stm32duino.com/index.php?title=STM32F407
@@ -1792,7 +1799,7 @@ void setPinMapping(byte boardID)
       break;
 
     case 20:
-    #if defined(CORE_AVR) && !defined(SMALL_FLASH_MODE) //No support for bluepill here anyway
+    #if (defined(CORE_AVR) || defined(MEGA100_LAYOUT)) && !defined(SMALL_FLASH_MODE) //No support for bluepill here anyway
       //Pin mappings as per the Plazomat In/Out shields Rev 0.1
       pinInjector1 = 8; //Output pin injector 1 is on
       pinInjector2 = 9; //Output pin injector 2 is on
@@ -1870,7 +1877,7 @@ void setPinMapping(byte boardID)
 
    case 31:
       //Pin mappings for the BMW PnP PCBs by pazi88.
-      #if defined(CORE_AVR)
+      #if defined(CORE_AVR) || defined(MEGA100_LAYOUT)
       //This is the regular MEGA2560 pin mapping
       pinInjector1 = 8; //Output pin injector 1
       pinInjector2 = 9; //Output pin injector 2
@@ -2104,7 +2111,7 @@ void setPinMapping(byte boardID)
     case 45:
     #ifndef SMALL_FLASH_MODE //No support for bluepill here anyway
       //Pin mappings for the DIY-EFI CORE4 Module. This is an AVR only module
-      #if defined(CORE_AVR)
+      #if defined(CORE_AVR) || defined(MEGA100_LAYOUT)
       pinInjector1 = 10; //Output pin injector 1 is on
       pinInjector2 = 11; //Output pin injector 2 is on
       pinInjector3 = 12; //Output pin injector 3 is on
@@ -2433,7 +2440,9 @@ void setPinMapping(byte boardID)
     
  
     case 60:
-        #if defined(STM32F407xx)
+        #if defined(MEGA100_LAYOUT)
+        //Not a Mega board: no pins for Mega100
+        #elif defined(STM32F407xx)
         //Pin definitions for experimental board Tjeerd 
         //Black F407VE wiki.stm32duino.com/index.php?title=STM32F407
         //https://github.com/Tjeerdie/SPECTRE/tree/master/SPECTRE_V0.5
@@ -2613,7 +2622,9 @@ void setPinMapping(byte boardID)
     #endif
       break;
     default:
-      #if defined(STM32F407xx)
+      #if defined(MEGA100_LAYOUT)
+      //Unknown board: no pins for Mega100
+      #elif defined(STM32F407xx)
       //Pin definitions for experimental board Tjeerd 
         //Black F407VE wiki.stm32duino.com/index.php?title=STM32F407
 
@@ -2757,6 +2768,26 @@ void setPinMapping(byte boardID)
       #endif  
       break;
   }
+
+#if defined(MEGA100_LAYOUT)
+  // The board pins above are Arduino Mega numbers; drive the STM32 pin on that header position.
+  byte *const boardPins[] = {
+    &pinInjector1, &pinInjector2, &pinInjector3, &pinInjector4, &pinInjector5, &pinInjector6,
+    &pinInjector7, &pinInjector8, &pinCoil1, &pinCoil2, &pinCoil3, &pinCoil4,
+    &pinCoil5, &pinCoil6, &pinCoil7, &pinCoil8, &pinTrigger, &pinTrigger2,
+    &pinTrigger3, &pinTPS, &pinMAP, &pinEMAP, &pinMAP2, &pinIAT,
+    &pinCLT, &pinO2, &pinO2_2, &pinBat, &pinDisplayReset, &pinTachOut,
+    &pinFuelPump, &pinIdle1, &pinIdle2, &pinIdleUp, &pinIdleUpOutput, &pinCTPS,
+    &pinFuel2Input, &pinSpark2Input, &pinSpareTemp1, &pinSpareTemp2, &pinSpareOut1, &pinSpareOut2,
+    &pinSpareOut3, &pinSpareOut4, &pinSpareOut5, &pinSpareOut6, &pinSpareHOut1, &pinSpareHOut2,
+    &pinSpareLOut1, &pinSpareLOut2, &pinSpareLOut3, &pinSpareLOut4, &pinSpareLOut5, &pinBoost,
+    &pinVVT_1, &pinVVT_2, &pinFan, &pinStepperDir, &pinStepperStep, &pinStepperEnable,
+    &pinLaunch, &pinIgnBypass, &pinFlex, &pinVSS, &pinBaro, &pinResetControl,
+    &pinFuelPressure, &pinOilPressure, &pinWMIEmpty, &pinWMIIndicator, &pinWMIEnabled, &pinSDEnable,
+    &pinAirConComp, &pinAirConFan, &pinAirConRequest
+  };
+  for (byte *pin : boardPins) { *pin = mega100Pin(*pin); }
+#endif
 
   //Setup any devices that are using selectable pins
 

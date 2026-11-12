@@ -33,6 +33,15 @@
 * General
 */
 #define PORT_TYPE uint32_t
+#if defined(MEGA100_LAYOUT)
+  //Mega100: a Mega header pin that is not wired has no STM32 port (NULL). Point its port registers at a
+  //dummy word, so a board layout that uses such a pin writes there instead of faulting.
+  extern volatile uint32_t mega100UnwiredPort;
+  #undef portOutputRegister
+  #undef portInputRegister
+  #define portOutputRegister(P) ( ((P) != NULL) ? &((P)->ODR) : &mega100UnwiredPort )
+  #define portInputRegister(P)  ( ((P) != NULL) ? &((P)->IDR) : &mega100UnwiredPort )
+#endif
 #define PINMASK_TYPE uint32_t
 #define COMPARE_TYPE uint16_t
 #define COUNTER_TYPE uint16_t
@@ -79,7 +88,7 @@ extern "C" char* sbrk(int incr); //Used to freeRam
 inline uint32_t  digitalPinToInterrupt(uint32_t Interrupt_pin) { return Interrupt_pin; } //This isn't included in the stm32duino libs (yet)
 #endif
 
-#if defined(USER_BTN) 
+#if defined(USER_BTN) && !defined(MEGA100_LAYOUT) //Mega100: no button, and the variant's button pin is a header pin
   #define EEPROM_RESET_PIN USER_BTN //onboard key0 for black STM32F407 boards and blackpills, keep pressed during boot to reset eeprom
 #endif
 
@@ -126,6 +135,10 @@ void jumpToBootloader();
     #define A14  PA4
     #define A15  PA5
   #endif
+#elif defined(MEGA100_LAYOUT)
+  //Mega100: only USB is off limits. PB0, PB3, PB4 and PB5 are Mega header pins (A8, D13, D20, D25)
+  //here, not the SPI flash of the black board; the EEPROM is in internal flash.
+  #define pinIsReserved(pin)  ( ((pin) == PA11) || ((pin) == PA12) )
 #else
   #ifdef USE_SPI_EEPROM
     #define pinIsReserved(pin)  ( ((pin) == PA11) || ((pin) == PA12) || ((pin) == PB3) || ((pin) == PB4) || ((pin) == PB5) || ((pin) == USE_SPI_EEPROM) ) //Forbidden pins like USB

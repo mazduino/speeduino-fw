@@ -32,6 +32,9 @@ extern uint8_t currentRuleStatus;
 
 void setResetControlPinState(void);
 byte pinTranslate(byte rawPin);
+#if defined(MEGA100_LAYOUT)
+byte mega100Pin(byte megaPin); //Mega100: STM32 pin on Arduino Mega header pin megaPin (0-53), 0xFF when not wired
+#endif
 byte pinTranslateAnalog(byte rawPin);
 void initialiseProgrammableIO(void);
 void checkProgrammableIO(void);
